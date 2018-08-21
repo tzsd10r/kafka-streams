@@ -1,7 +1,13 @@
 package org.oclc.kafkastreams.kafkastreams
 
+import org.apache.kafka.streams.state.KeyValueIterator
+import org.apache.kafka.streams.state.QueryableStoreType
+import org.apache.kafka.streams.state.QueryableStoreTypes
+import org.apache.kafka.streams.state.ReadOnlyKeyValueStore
+import org.springframework.cloud.stream.binder.kafka.streams.QueryableStoreRegistry
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -14,6 +20,9 @@ import javax.validation.Valid
 class ApplicationController {
     @Resource
     ApplicationControllerDelegate kafkaStreamsControllerDelegate
+
+    @Resource
+    QueryableStoreRegistry registry
 
     /**
      * http://localhost:8080/deliver/event
@@ -43,4 +52,17 @@ class ApplicationController {
         kafkaStreamsControllerDelegate.delegateToService(kafkaStreamsControllerDelegate.build(payload, "ONLINE"))
     }
 
+    /**
+     * Queries for the counts.
+     */
+    @GetMapping("/count")
+    Map<String, Long> counts() {
+        def count = [:]
+
+        registry.getQueryableStoreType(IChannelBinder.MATERIALIZED_COUNT, QueryableStoreTypes.keyValueStore()).all().each { keyValue ->
+            count."${keyValue.key}" = keyValue.value
+        }
+
+        count
+    }
 }
